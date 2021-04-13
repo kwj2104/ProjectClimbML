@@ -1,0 +1,50 @@
+import numpy as np
+import pickle
+import torch
+from torch.utils.data import Dataset
+
+class ClimbingDataset(Dataset):
+
+    # Print everything
+    np.set_printoptions(threshold=np.inf)
+
+    # video level data structures
+    label_dict = {}
+    video_list = []
+
+    # frame level data structures
+    frame_list = []
+    frame_label_list = []
+
+    def __init__(self, frame_dataset, label_dataset):
+
+        # "climb_frame_dataset.pkl"
+        # "climb_label_dataset.pkl"
+        with open(frame_dataset, 'rb') as pickle_file:
+            self.frame_list = pickle.load(pickle_file)
+
+        with open(label_dataset, 'rb') as pickle_file:
+            self.frame_label_list = pickle.load(pickle_file)
+
+    def __len__(self):
+        return len(self.frame_label_list)
+        # return len(self.label_dict)
+
+    def __getitem__(self, idx):
+        # print(self.frame_label_list[idx])
+        return torch.from_numpy(self.frame_list[idx]), torch.tensor(self.frame_label_list[idx], dtype=torch.int32)
+
+    # Create weighed sampler to deal with class imbalance
+    def get_weights(self):
+        unique, counts = np.unique(self.frame_label_list, return_counts=True)
+        num_samples = sum(counts)
+        class_weights = [num_samples / counts[i] for i in range(len(counts))]
+
+        # Get balanced sample between climbing vs non-climbing
+        # for i in range(len(class_weights)):
+        #     if i != 1:
+        #         class_weights[i] = (num_samples - counts[1]) / num_samples
+
+        weights = [class_weights[self.frame_label_list[i]] for i in range(int(num_samples))]
+
+        return weights
