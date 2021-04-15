@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 import torch
 from torch.utils.data import Dataset
+import sys
 
 class ClimbingDataset(Dataset):
 
@@ -25,6 +26,8 @@ class ClimbingDataset(Dataset):
 
         with open(label_dataset, 'rb') as pickle_file:
             self.frame_label_list = pickle.load(pickle_file)
+
+        print(len(self.frame_list), len(self.frame_label_list))
 
     def __len__(self):
         return len(self.frame_label_list)
