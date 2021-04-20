@@ -4,7 +4,7 @@ import cv2
 import time
 from torch.utils.data import WeightedRandomSampler, DataLoader
 
-from preprocessing import ClimbingDataset
+from climbing_dataset import ClimbingDataset
 
 # import wandb
 import torch
@@ -156,8 +156,8 @@ def main():
     val_sampler = WeightedRandomSampler(torch.DoubleTensor(climb_test_dataset.get_weights()), len(climb_test_dataset), replacement=False)
     test_loader = DataLoader(climb_test_dataset, sampler=val_sampler, **test_kwargs)
 
-    test_data(test_loader)
-    sys.exit()
+    # test_data(test_loader)
+    # sys.exit()
 
     print("Dataset loaded")
     print("Dataset count: ", len(climb_dataset))
