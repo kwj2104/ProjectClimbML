@@ -8,6 +8,8 @@ import pickle
 from tqdm import tqdm
 import random
 
+random.seed(1000)
+
 # Print everything
 np.set_printoptions(threshold=np.inf)
 
@@ -21,23 +23,36 @@ pre_video_list = []
 # frame_list_val = []
 # frame_label_list_val = []
 
-#video level data structures
+#generate data for climbing / not climbing per frame
 video_list = []
 video_label_list = []
 
 video_list_val = []
 video_label_list_val = []
 
+# generate data for send/fail per video
+video_pf_list = []
+video_pf_list_val = []
+
 # reduce frames. E.g., 3 is cut every third frame
 frame_reduction = 2
 
 
 
-def save_label(filename):
-    file1 = open(filename, 'r', errors='replace')
+def save_label(filename_dump, filename):
+    file1 = open(filename_dump, 'r', errors='replace')
     labels = []
     lines = file1.readlines()
 
+    #Detect whether video is fail given filename
+    filename_split = filename.split("_")
+    send = True
+    for piece in filename_split:
+        # print("Piece: ", piece)
+        if piece == "FAIL.mp4":
+            send = False
+
+    # Detect label per frame
     i = 0
     for line in lines:
         if line.split("_")[0] == "frame":
@@ -46,8 +61,8 @@ def save_label(filename):
             if label.isnumeric():
                 labels.append(int(label))
             i += 1
-
-    return labels
+    print("Send: ", send)
+    return labels, send
 
 
 def save_video(filename):
@@ -197,24 +212,33 @@ def generate_dataset(dump_anno=False, video_dataset=False, split_ratio=.8):
     # Shuffle incoming array
     random.shuffle(pre_video_list)
 
-    breakpoint_test = 3
+    # breakpoint_test = 10
     for i, video in tqdm(enumerate(pre_video_list)):
+        # if i > breakpoint_test:
+        #     break
         base, f = video
         frame_data = save_video(os.path.join(base, f))
-        frame_label = save_label("raw_dump/" + label_dict[f])
-        if i > breakpoint_test:
-            break
+        frame_label, pf = save_label("raw_dump/" + label_dict[f], f)
 
         # Split dataset into training and validation
+        # NOTE: all but last element adjustment on frame_data from weird CVAT behavior (the [:-1])
         dataset_type = ""
+
+        # for f in frame_data:
+        #     cv2.imshow("Final output", f)
+        #     if cv2.waitKey(1) & 0xFF == ord('q'):
+        #         break
+
         if video_dataset:
             dataset_type = "video"
             if i < train_len:
-                video_list.append(frame_data)
+                video_list.append(frame_data[:-1])
                 video_label_list.append(frame_label)
+                video_pf_list.append(pf)
             else:
-                video_list_val.append(frame_data)
+                video_list_val.append(frame_data[:-1])
                 video_label_list_val.append(frame_label)
+                video_pf_list_val.append(pf)
         else:
             dataset_type = "frame"
             if i < train_len:
@@ -226,27 +250,38 @@ def generate_dataset(dump_anno=False, video_dataset=False, split_ratio=.8):
                     video_list_val.append(frame_data[j])
                     video_label_list_val.append(frame_label[j])
 
-        print("dim: ", frame_data[0].shape," ", len(frame_data)," ", f)
+        #print("dim: ", frame_data[0].shape," ", len(frame_data)," ", f)
 
     print("Saving generated dataset...")
-    filename_v = "Processed dataset/climb_" + dataset_type + "_dataset.pkl"
+    filename_v = "Processed_dataset/climb_" + dataset_type + "_dataset.pkl"
     outfile_v = open(filename_v, 'wb')
     pickle.dump(video_list, outfile_v)
     outfile_v.close()
 
-    filename_l = "Processed dataset/climb_" + dataset_type + "_label_dataset.pkl"
+    filename_l = "Processed_dataset/climb_" + dataset_type + "_label_dataset.pkl"
     outfile_l = open(filename_l, 'wb')
     pickle.dump(video_label_list, outfile_l)
     outfile_l.close()
 
-    filename_v = "Processed dataset/climb_" + dataset_type + "_dataset_val.pkl"
+    filename_v = "Processed_dataset/climb_" + dataset_type + "_dataset_val.pkl"
     outfile_v = open(filename_v, 'wb')
     pickle.dump(video_list_val, outfile_v)
     outfile_v.close()
 
-    filename_l = "Processed dataset/climb_" + dataset_type + "_label_dataset_val.pkl"
+    filename_l = "Processed_dataset/climb_" + dataset_type + "_label_dataset_val.pkl"
     outfile_l = open(filename_l, 'wb')
     pickle.dump(video_label_list_val, outfile_l)
+    outfile_l.close()
+
+    # Record pf labels
+    filename_v = "Processed_dataset/climb_" + dataset_type + "_pf_label_dataset.pkl"
+    outfile_v = open(filename_v, 'wb')
+    pickle.dump(video_pf_list, outfile_v)
+    outfile_v.close()
+
+    filename_l = "Processed_dataset/climb_" + dataset_type + "_pf_label_dataset_val.pkl"
+    outfile_l = open(filename_l, 'wb')
+    pickle.dump(video_pf_list_val, outfile_l)
     outfile_l.close()
 
 if __name__ == '__main__':
